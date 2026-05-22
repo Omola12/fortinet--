@@ -1,22 +1,27 @@
-# Recommended for most uses
-DATABASE_URL=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+import { sql } from '@vercel/postgres';
+import express from 'express';
+import cors from 'cors';
 
-# For uses requiring a connection without pgbouncer
-DATABASE_URL_UNPOOLED=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-# Parameters for constructing your own connection string
-PGHOST=ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech
-PGHOST_UNPOOLED=ep-billowing-bonus-aqhgw4di.c-8.us-east-1.aws.neon.tech
-PGUSER=neondb_owner
-PGDATABASE=neondb
-PGPASSWORD=npg_QDgdsbfrZ13k
+app.get('/api/complaints', async (req, res) => {
+  const { rows } = await sql`SELECT * FROM complaints ORDER BY created_at DESC`;
+  res.json({ success: true, complaints: rows });
+});
 
-# Parameters for Vercel Postgres Templates
-POSTGRES_URL=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
-POSTGRES_URL_NON_POOLING=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require
-POSTGRES_USER=neondb_owner
-POSTGRES_HOST=ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech
-POSTGRES_PASSWORD=npg_QDgdsbfrZ13k
-POSTGRES_DATABASE=neondb
-POSTGRES_URL_NO_SSL=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech/neondb
-POSTGRES_PRISMA_URL=postgresql://neondb_owner:npg_QDgdsbfrZ13k@ep-billowing-bonus-aqhgw4di-pooler.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&connect_timeout=15&sslmode=require
+app.post('/api/complaints', async (req, res) => {
+  const { name, email, subject, category, message } = req.body;
+  const id = `FTNT-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+  const { rows } = await sql`
+    INSERT INTO complaints (id, name, email, subject, category, message)
+    VALUES (${id}, ${name}, ${email}, ${subject}, ${category}, ${message})
+    RETURNING id
+  `;
+  res.json({ success: true, id: rows[0].id });
+});
+
+// Add routes for reply, resolve, delete (same pattern)
+
+export default app;
