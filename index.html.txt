@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fortinet Support | Customer Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1><span>FORTINET</span> Support</h1>
+            <p>Customer Complaint Portal</p>
+        </div>
+
+        <!-- Submit Complaint Card -->
+        <div class="card">
+            <div id="message"></div>
+            <form id="complaintForm">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" id="subject" required>
+                </div>
+                <div class="form-group">
+                    <label>Category *</label>
+                    <select id="category">
+                        <option>Technical Issue</option>
+                        <option>Billing Problem</option>
+                        <option>Feature Request</option>
+                        <option>Account Issue</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Complaint Details *</label>
+                    <textarea id="messageText" rows="5" required></textarea>
+                </div>
+                <button type="submit" id="submitBtn">📤 Submit Complaint</button>
+            </form>
+        </div>
+
+        <!-- Track Complaint Card -->
+        <div class="track-card">
+            <h3 style="margin-bottom: 16px;">🔍 Track Your Complaint</h3>
+            <div class="track-header">
+                <input type="text" id="trackId" placeholder="Enter Complaint ID (e.g., FTNT-123456-ABC789)">
+                <button onclick="trackComplaint()">Track</button>
+            </div>
+            <div id="trackResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "/api";
+
+        // Submit Complaint
+        document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            
+            const data = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                subject: document.getElementById('subject').value,
+                category: document.getElementById('category').value,
+                message: document.getElementById('messageText').value
+            };
+            
+            try {
+                const res = await fetch(`${API_URL}/complaints`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.id) {
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ <strong>Complaint submitted successfully!</strong><br>
+                            Your Complaint ID: <strong style="font-size: 18px;">${result.id}</strong><br>
+                            Please save this ID to track your complaint status.
+                        </div>
+                    `;
+                    document.getElementById('complaintForm').reset();
+                } else {
+                    document.getElementById('message').innerHTML = `<div class="alert alert-error">❌ ${result.error || 'Submission failed'}</div>`;
+                }
+            } catch (err) {
+                document.getElementById('message').innerHTML = `<div class="alert alert-error">❌ Network error. Please try again.</div>`;
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = '📤 Submit Complaint';
+            setTimeout(() => document.getElementById('message').innerHTML = '', 8000);
+        });
+        
+        // Track Complaint
+        async function trackComplaint() {
+            const id = document.getElementById('trackId').value.trim();
+            if (!id) {
+                alert('Please enter your Complaint ID');
+                return;
+            }
+            
+            const trackDiv = document.getElementById('trackResult');
+            trackDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">🔍 Searching for your complaint...</div>';
+            
+            try {
+                const res = await fetch(`${API_URL}/complaints/${encodeURIComponent(id)}`);
+                const data = await res.json();
+                
+                if (data.complaint && data.complaint.id) {
+                    const c = data.complaint;
+                    trackDiv.innerHTML = `
+                        <div class="complaint-detail">
+                            <p><strong>🎫 Complaint ID:</strong> ${c.id}</p>
+                            <p><strong>👤 Name:</strong> ${c.name}</p>
+                            <p><strong>📧 Email:</strong> ${c.email}</p>
+                            <p><strong>📌 Subject:</strong> ${c.subject}</p>
+                            <p><strong>📂 Category:</strong> ${c.category}</p>
+                            <p><strong>📝 Message:</strong> ${c.message}</p>
+                            <p><strong>⚡ Status:</strong> <span class="status-badge status-${c.status}">${c.status}</span></p>
+                            <p><strong>📅 Date Submitted:</strong> ${c.createdAt}</p>
+                            ${c.reply ? `<div class="reply-box"><strong>📝 Fortinet Support Response:</strong><br>${c.reply}<br><small>Sent on: ${c.replyDate}</small></div>` : '<div class="reply-box" style="background: #f8f9fa;"><em>No response yet. Our team will get back to you within 24 hours.</em></div>'}
+                        </div>
+                    `;
+                } else {
+                    trackDiv.innerHTML = `<div class="alert alert-error">❌ Complaint not found. Please check your Complaint ID and try again.</div>`;
+                }
+            } catch (err) {
+                trackDiv.innerHTML = `<div class="alert alert-error">❌ Error tracking complaint. Please try again.</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
